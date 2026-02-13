@@ -1,0 +1,57 @@
+[package]
+name = "kissa"
+version = "0.1.0"
+edition = "2024"
+description = "Finally herd your repos."
+license = "MIT"
+repository = "https://github.com/aaronsb/kissa"
+
+[[bin]]
+name = "kissa"
+path = "src/main.rs"
+
+[dependencies]
+# Git operations (ADR-101)
+git2 = "0.20"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Persistence (ADR-103)
+rusqlite = { version = "0.34", features = ["bundled"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Filesystem
+walkdir = "2"
+dirs = "6"
+
+# Terminal display
+owo-colors = "4"
+indicatif = "0.17"
+
+# MCP server
+rmcp = { version = "0.15", default-features = false, features = ["server", "macros", "transport-io"] }
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+glob = "0.3"
+
+[dev-dependencies]
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
+insta = { version = "1", features = ["json"] }
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
