@@ -1,0 +1,58 @@
+# ADR Configuration for kissa
+# Defines domain numbering and validation rules.
+# Used by: docs/scripts/adr
+
+project_name: kissa
+
+# Domain Number Series
+domains:
+  core:
+    range: [100, 199]
+    name: Core
+    description: Language, architecture, data model, graph design
+    folder: core
+
+  cli:
+    range: [200, 299]
+    name: CLI
+    description: Commands, output formats, terminal display
+    folder: cli
+
+  mcp:
+    range: [300, 399]
+    name: MCP
+    description: MCP server, tools, resources, transport
+    folder: mcp
+
+  scanning:
+    range: [400, 499]
+    name: Scanning
+    description: Filesystem traversal, indexing, boundaries
+    folder: scanning
+
+  security:
+    range: [500, 599]
+    name: Security
+    description: Permissions, difficulty levels, safety model
+    folder: security
+
+# Valid ADR statuses
+statuses:
+  - Draft
+  - Proposed
+  - Accepted
+  - Superseded
+  - Deprecated
+
+# Default values for new ADRs
+defaults:
+  deciders: [aaronsb]
+  status: Draft
+
+# Legacy ADR range (pre-domain numbering)
+legacy:
+  range: [1, 99]
+  label: "Legacy"
+
+# Viewer command
+viewer: cat {file}
