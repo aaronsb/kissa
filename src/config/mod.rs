@@ -55,8 +55,6 @@ pub fn index_path() -> PathBuf {
 mod tests {
     use super::*;
     use crate::core::permissions::DifficultyLevel;
-    use std::io::Write;
-
     #[test]
     fn missing_file_returns_defaults() {
         let config = load_config_from("/nonexistent/path/config.toml").unwrap();
