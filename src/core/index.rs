@@ -7,7 +7,7 @@ use super::filter::RepoFilter;
 use super::repo::{Freshness, Ownership, Remote, Repo, RepoId, RepoState};
 use crate::error::Result;
 
-const SCHEMA_VERSION: i32 = 1;
+const SCHEMA_VERSION: i32 = 2;
 
 /// The persistent repo index backed by SQLite (ADR-103).
 pub struct Index {
@@ -111,6 +111,16 @@ impl Index {
 
             self.conn.execute(
                 "INSERT INTO schema_version (version) VALUES (?1)",
+                [1],
+            )?;
+        }
+
+        if current < 2 {
+            self.conn.execute_batch(
+                "ALTER TABLE repos ADD COLUMN managed_by TEXT;"
+            )?;
+            self.conn.execute(
+                "UPDATE schema_version SET version = ?1",
                 [SCHEMA_VERSION],
             )?;
         }
@@ -158,13 +168,13 @@ impl Index {
                 branch_count, stale_branch_count, dirty, staged, untracked,
                 ahead, behind, last_commit, last_verified, first_seen,
                 freshness, category, ownership_type, ownership_label,
-                intention, project, role
+                intention, project, role, managed_by
             ) VALUES (
                 ?1, ?2, ?3, ?4, ?5,
                 ?6, ?7, ?8, ?9, ?10,
                 ?11, ?12, ?13, ?14, ?15,
                 ?16, ?17, ?18, ?19,
-                ?20, ?21, ?22
+                ?20, ?21, ?22, ?23
             )
             ON CONFLICT(path) DO UPDATE SET
                 name = excluded.name,
@@ -186,7 +196,8 @@ impl Index {
                 ownership_label = excluded.ownership_label,
                 intention = excluded.intention,
                 project = excluded.project,
-                role = excluded.role
+                role = excluded.role,
+                managed_by = excluded.managed_by
             ",
             rusqlite::params![
                 repo.name,
@@ -211,6 +222,7 @@ impl Index {
                 intention_str,
                 repo.project,
                 repo.role,
+                repo.managed_by,
             ],
         )?;
 
@@ -393,6 +405,12 @@ impl Index {
             |row| row.get(0),
         )?;
 
+        let managed_count: usize = self.conn.query_row(
+            "SELECT COUNT(*) FROM repos WHERE managed_by IS NOT NULL",
+            [],
+            |row| row.get(0),
+        )?;
+
         let freshness = self.freshness_summary()?;
         let last_scan = self.last_scan_time()?;
 
@@ -405,6 +423,7 @@ impl Index {
             unpushed_count,
             orphan_count,
             lost_count,
+            managed_count,
             freshness,
             last_scan,
             roots,
@@ -476,7 +495,7 @@ impl Index {
                 branch_count, stale_branch_count, dirty, staged, untracked,
                 ahead, behind, last_commit, last_verified, first_seen,
                 freshness, category, ownership_type, ownership_label,
-                intention, project, role
+                intention, project, role, managed_by
             FROM repos WHERE id = ?1",
             [id],
             |row| {
@@ -504,6 +523,7 @@ impl Index {
                     intention: row.get(20)?,
                     project: row.get(21)?,
                     role: row.get(22)?,
+                    managed_by: row.get(23)?,
                 })
             },
         )?;
@@ -566,6 +586,7 @@ struct RepoRow {
     intention: Option<String>,
     project: Option<String>,
     role: Option<String>,
+    managed_by: Option<String>,
 }
 
 impl RepoRow {
@@ -617,6 +638,7 @@ impl RepoRow {
             category,
             ownership,
             intention,
+            managed_by: self.managed_by,
             tags,
             project: self.project,
             role: self.role,
@@ -640,6 +662,7 @@ pub struct IndexSummary {
     pub unpushed_count: usize,
     pub orphan_count: usize,
     pub lost_count: usize,
+    pub managed_count: usize,
     pub freshness: FreshnessSummary,
     pub last_scan: Option<DateTime<Utc>>,
     pub roots: Vec<PathBuf>,
@@ -679,6 +702,7 @@ mod tests {
                 label: "initech".into(),
             }),
             intention: Some(Intention::Developing),
+            managed_by: None,
             tags: vec!["rust".into(), "backend".into()],
             project: Some("platform".into()),
             role: Some("service".into()),

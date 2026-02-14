@@ -38,6 +38,9 @@ pub struct Repo {
     pub ownership: Option<Ownership>,
     pub intention: Option<Intention>,
 
+    // Classification (ADR-106)
+    pub managed_by: Option<String>,
+
     // User metadata
     pub tags: Vec<String>,
     pub project: Option<String>,

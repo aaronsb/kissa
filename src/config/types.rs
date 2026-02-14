@@ -15,6 +15,8 @@ pub struct KissaConfig {
     #[serde(default)]
     pub overrides: HashMap<String, DifficultyLevel>,
     pub safety: SafetyConfig,
+    #[serde(default)]
+    pub classify: Vec<ClassifyRule>,
 }
 
 impl Default for KissaConfig {
@@ -26,6 +28,7 @@ impl Default for KissaConfig {
             display: DisplayConfig::default(),
             overrides: HashMap::new(),
             safety: SafetyConfig::default(),
+            classify: Vec::new(),
         }
     }
 }
@@ -169,4 +172,36 @@ impl Default for SafetyConfig {
             max_plan_size: 50,
         }
     }
+}
+
+/// A classification rule from config `[[classify]]` (ADR-106).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClassifyRule {
+    #[serde(rename = "match")]
+    pub match_criteria: ClassifyMatch,
+    #[serde(default)]
+    pub set: ClassifySet,
+    #[serde(default)]
+    pub managed_by: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
+/// Match criteria for a classification rule. All fields are AND-combined.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ClassifyMatch {
+    pub path: Option<String>,
+    pub org: Option<String>,
+    pub name: Option<String>,
+    pub has_remote: Option<bool>,
+    pub is_bare: Option<bool>,
+}
+
+/// Fields to set when a classification rule matches.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ClassifySet {
+    pub category: Option<String>,
+    pub ownership: Option<String>,
+    pub intention: Option<String>,
+    pub state: Option<String>,
 }

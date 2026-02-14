@@ -57,6 +57,18 @@ pub struct ListArgs {
     /// Filter by name (substring match)
     #[arg(long)]
     pub name: Option<String>,
+
+    /// Show all repos including tool-managed ones
+    #[arg(long)]
+    pub all: bool,
+
+    /// Show only tool-managed repos
+    #[arg(long)]
+    pub managed: bool,
+
+    /// Filter by managing tool (e.g., lazy.nvim, cargo)
+    #[arg(long, value_name = "TOOL")]
+    pub managed_by: Option<String>,
 }
 
 pub fn run(args: ListArgs, format: OutputFormat) -> anyhow::Result<()> {
@@ -70,6 +82,21 @@ pub fn run(args: ListArgs, format: OutputFormat) -> anyhow::Result<()> {
         Some(RepoState::Lost)
     } else {
         None
+    };
+
+    // Determine managed visibility:
+    // --managed-by X  → show only repos managed by X
+    // --managed       → show only managed repos
+    // --all           → show everything (no managed filter)
+    // (default)       → hide managed repos
+    let (show_managed, managed_by) = if args.managed_by.is_some() {
+        (None, args.managed_by)
+    } else if args.managed {
+        (Some(true), None)
+    } else if args.all {
+        (None, None)
+    } else {
+        (Some(false), None)
     };
 
     let filter = RepoFilter {
@@ -86,6 +113,8 @@ pub fn run(args: ListArgs, format: OutputFormat) -> anyhow::Result<()> {
         has_remote: None,
         name_contains: args.name,
         state,
+        managed_by,
+        show_managed,
     };
 
     let repos = index.list_repos(&filter)?;

@@ -21,6 +21,9 @@ pub fn render_repo_line(repo: &Repo) -> String {
     if repo.behind > 0 {
         indicators.push(format!("{}↓", repo.behind).yellow().to_string());
     }
+    if let Some(ref mb) = repo.managed_by {
+        indicators.push(format!("⚙{}", mb).dimmed().to_string());
+    }
     if repo.state == RepoState::Lost {
         indicators.push("LOST".red().bold().to_string());
     }
@@ -117,6 +120,13 @@ pub fn render_status(repo: &Repo) -> String {
     }
 
     // Classification
+    if let Some(ref mb) = repo.managed_by {
+        lines.push(format!(
+            "  {} {}",
+            "managed by:".dimmed(),
+            mb,
+        ));
+    }
     if let Some(ref cat) = repo.category {
         lines.push(format!(
             "  {} {:?}",

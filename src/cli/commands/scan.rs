@@ -5,6 +5,7 @@ use owo_colors::OwoColorize;
 
 use crate::cli::OutputFormat;
 use kissa::config;
+use kissa::core::classify;
 use kissa::core::git_ops;
 use kissa::core::index::Index;
 use kissa::core::repo::{Freshness, Repo, RepoState};
@@ -63,7 +64,7 @@ pub fn run(args: ScanArgs, format: OutputFormat) -> anyhow::Result<()> {
     for discovered in &result.discovered {
         match git_ops::extract_vitals(&discovered.path) {
             Ok(vitals) => {
-                let repo = Repo {
+                let mut repo = Repo {
                     id: 0,
                     name: vitals.name,
                     path: discovered.path.clone(),
@@ -85,10 +86,12 @@ pub fn run(args: ScanArgs, format: OutputFormat) -> anyhow::Result<()> {
                     category: None,
                     ownership: None,
                     intention: None,
+                    managed_by: None,
                     tags: vec![],
                     project: None,
                     role: None,
                 };
+                classify::classify_repo(&mut repo, &cfg);
                 if index.upsert_repo(&repo).is_ok() {
                     upserted += 1;
                 }

@@ -13,15 +13,18 @@ pub fn format_repo_list(repos: &[Repo]) -> String {
     lines.push(format!("[listing] {} repos", repos.len()));
 
     for repo in repos {
-        let mut flags = Vec::new();
+        let mut flags: Vec<String> = Vec::new();
         if repo.dirty {
-            flags.push("dirty");
+            flags.push("dirty".into());
         }
         if repo.ahead > 0 {
-            flags.push("unpushed");
+            flags.push("unpushed".into());
         }
         if repo.remotes.is_empty() {
-            flags.push("orphan");
+            flags.push("orphan".into());
+        }
+        if let Some(ref mb) = repo.managed_by {
+            flags.push(format!("managed:{}", mb));
         }
         let flag_str = if flags.is_empty() {
             String::new()
@@ -79,6 +82,10 @@ pub fn format_repo_status(repo: &Repo) -> String {
         lines.push(format!("  tracking: ↑{} ↓{}", repo.ahead, repo.behind));
     }
 
+    if let Some(ref mb) = repo.managed_by {
+        lines.push(format!("  managed_by: {}", mb));
+    }
+
     if !repo.remotes.is_empty() {
         for remote in &repo.remotes {
             lines.push(format!("  remote: {} → {}", remote.name, remote.url));
@@ -122,6 +129,7 @@ pub fn format_summary(summary: &IndexSummary) -> String {
     lines.push(format!("  unpushed: {}", summary.unpushed_count));
     lines.push(format!("  orphan: {}", summary.orphan_count));
     lines.push(format!("  lost: {}", summary.lost_count));
+    lines.push(format!("  managed: {}", summary.managed_count));
     if let Some(ref ts) = summary.last_scan {
         lines.push(format!("  last scan: {}", ts.format("%Y-%m-%d %H:%M")));
     }

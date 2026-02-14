@@ -19,6 +19,9 @@ pub struct RepoFilter {
     pub has_remote: Option<bool>,
     pub name_contains: Option<String>,
     pub state: Option<RepoState>,
+    pub managed_by: Option<String>,
+    /// None = show all, Some(true) = only managed, Some(false) = only unmanaged
+    pub show_managed: Option<bool>,
 }
 
 impl RepoFilter {
@@ -92,6 +95,22 @@ impl RepoFilter {
                 }
             }
         }
+        if let Some(ref mb) = self.managed_by {
+            match &repo.managed_by {
+                Some(rmb) => {
+                    if !rmb.eq_ignore_ascii_case(mb) {
+                        return false;
+                    }
+                }
+                None => return false,
+            }
+        }
+        if let Some(show) = self.show_managed {
+            let is_managed = repo.managed_by.is_some();
+            if show != is_managed {
+                return false;
+            }
+        }
         true
     }
 
@@ -110,6 +129,8 @@ impl RepoFilter {
             && self.has_remote.is_none()
             && self.name_contains.is_none()
             && self.state.is_none()
+            && self.managed_by.is_none()
+            && self.show_managed.is_none()
     }
 }
 
@@ -195,6 +216,7 @@ mod tests {
                 label: "initech".into(),
             }),
             intention: Some(Intention::Developing),
+            managed_by: None,
             tags: vec!["rust".into(), "work".into()],
             project: None,
             role: None,

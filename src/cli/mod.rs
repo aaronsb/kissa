@@ -35,6 +35,8 @@ pub enum Commands {
     Info(commands::info::InfoArgs),
     /// Show freshness overview
     Freshness,
+    /// Manage repo classification rules
+    Classify(commands::classify::ClassifyArgs),
     /// Show current configuration
     Config,
 }
@@ -55,6 +57,7 @@ pub fn run(cli: Cli) -> anyhow::Result<()> {
         Some(Commands::Status(args)) => commands::status::run(args, cli.format),
         Some(Commands::Info(args)) => commands::info::run(args, cli.format),
         Some(Commands::Freshness) => commands::freshness::run(cli.format),
+        Some(Commands::Classify(args)) => commands::classify::run(args, cli.format),
         Some(Commands::Config) => commands::config::run(cli.format),
         None => {
             // No subcommand — print help

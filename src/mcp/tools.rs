@@ -10,6 +10,7 @@ use serde::Deserialize;
 use tokio::sync::Mutex;
 
 use kissa::config;
+use kissa::core::classify;
 use kissa::core::filter::RepoFilter;
 use kissa::core::git_ops;
 use kissa::core::index::Index;
@@ -59,6 +60,12 @@ pub struct ListReposParams {
     /// Filter by tags (all must match)
     #[serde(default)]
     pub tags: Option<Vec<String>>,
+    /// Show only managed repos (true), only unmanaged (false), or all (omit)
+    #[serde(default)]
+    pub managed: Option<bool>,
+    /// Filter by managing tool name (e.g., "lazy.nvim")
+    #[serde(default)]
+    pub managed_by: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -118,6 +125,8 @@ impl KissaServer {
             has_remote: None,
             name_contains: p.name,
             state: None,
+            managed_by: p.managed_by,
+            show_managed: p.managed,
         };
 
         let index = self.index.lock().await;
@@ -206,7 +215,7 @@ impl KissaServer {
 
         for discovered in &result.discovered {
             if let Ok(vitals) = git_ops::extract_vitals(&discovered.path) {
-                let repo = Repo {
+                let mut repo = Repo {
                     id: 0,
                     name: vitals.name,
                     path: discovered.path.clone(),
@@ -228,10 +237,12 @@ impl KissaServer {
                     category: None,
                     ownership: None,
                     intention: None,
+                    managed_by: None,
                     tags: vec![],
                     project: None,
                     role: None,
                 };
+                classify::classify_repo(&mut repo, &cfg);
                 if index.upsert_repo(&repo).is_ok() {
                     upserted += 1;
                 }
