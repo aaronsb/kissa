@@ -1,6 +1,6 @@
-// MCP resource definitions (Phase 5)
-//
-// Resources to implement:
-// - kissa://summary — high-level stats
-// - kissa://config — current config
-// - kissa://problems — doctor output
+// MCP resource definitions
+// Resources are served via the ServerHandler trait methods.
+// Currently resources are implemented as tools (summary, get_config)
+// since rmcp resources require URI-based access which is less
+// ergonomic for LLM tool use. The summary and get_config tools
+// provide the same data in a more accessible format.
