@@ -1,3 +1,4 @@
+pub mod classify;
 pub mod filter;
 pub mod git_ops;
 pub mod index;

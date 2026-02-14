@@ -10,10 +10,11 @@ use serde::Deserialize;
 use tokio::sync::Mutex;
 
 use kissa::config;
+use kissa::core::classify;
 use kissa::core::filter::RepoFilter;
 use kissa::core::git_ops;
 use kissa::core::index::Index;
-use kissa::core::repo::{Freshness, Repo, RepoState};
+use kissa::core::repo::{Freshness, Repo};
 use kissa::core::scanner;
 
 use super::format;
@@ -59,6 +60,12 @@ pub struct ListReposParams {
     /// Filter by tags (all must match)
     #[serde(default)]
     pub tags: Option<Vec<String>>,
+    /// Show only managed repos (true), only unmanaged (false), or all (omit)
+    #[serde(default)]
+    pub managed: Option<bool>,
+    /// Filter by managing tool name (e.g., "lazy.nvim")
+    #[serde(default)]
+    pub managed_by: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -118,6 +125,8 @@ impl KissaServer {
             has_remote: None,
             name_contains: p.name,
             state: None,
+            managed_by: p.managed_by,
+            show_managed: p.managed,
         };
 
         let index = self.index.lock().await;
@@ -206,32 +215,8 @@ impl KissaServer {
 
         for discovered in &result.discovered {
             if let Ok(vitals) = git_ops::extract_vitals(&discovered.path) {
-                let repo = Repo {
-                    id: 0,
-                    name: vitals.name,
-                    path: discovered.path.clone(),
-                    state: RepoState::Active,
-                    remotes: vitals.remotes,
-                    default_branch: vitals.default_branch,
-                    current_branch: vitals.current_branch,
-                    branch_count: vitals.branch_count,
-                    stale_branch_count: vitals.stale_branch_count,
-                    dirty: vitals.dirty,
-                    staged: vitals.staged,
-                    untracked: vitals.untracked,
-                    ahead: vitals.ahead,
-                    behind: vitals.behind,
-                    last_commit: vitals.last_commit,
-                    last_verified: Some(chrono::Utc::now()),
-                    first_seen: chrono::Utc::now(),
-                    freshness: Freshness::from_commit_time(vitals.last_commit),
-                    category: None,
-                    ownership: None,
-                    intention: None,
-                    tags: vec![],
-                    project: None,
-                    role: None,
-                };
+                let mut repo = Repo::from_vitals(vitals, discovered.path.clone());
+                classify::classify_repo(&mut repo, &cfg);
                 if index.upsert_repo(&repo).is_ok() {
                     upserted += 1;
                 }

@@ -38,6 +38,9 @@ pub struct Repo {
     pub ownership: Option<Ownership>,
     pub intention: Option<Intention>,
 
+    // Classification (ADR-106)
+    pub managed_by: Option<String>,
+
     // User metadata
     pub tags: Vec<String>,
     pub project: Option<String>,
@@ -129,6 +132,39 @@ pub enum Intention {
     Infrastructure,
     Experiment,
     Archived,
+}
+
+impl Repo {
+    /// Create a new Repo from extracted vitals and discovery path.
+    pub fn from_vitals(vitals: RepoVitals, path: std::path::PathBuf) -> Self {
+        Self {
+            id: 0,
+            name: vitals.name,
+            path,
+            state: RepoState::Active,
+            remotes: vitals.remotes,
+            default_branch: vitals.default_branch,
+            current_branch: vitals.current_branch,
+            branch_count: vitals.branch_count,
+            stale_branch_count: vitals.stale_branch_count,
+            dirty: vitals.dirty,
+            staged: vitals.staged,
+            untracked: vitals.untracked,
+            ahead: vitals.ahead,
+            behind: vitals.behind,
+            last_commit: vitals.last_commit,
+            last_verified: Some(chrono::Utc::now()),
+            first_seen: chrono::Utc::now(),
+            freshness: Freshness::from_commit_time(vitals.last_commit),
+            category: None,
+            ownership: None,
+            intention: None,
+            managed_by: None,
+            tags: vec![],
+            project: None,
+            role: None,
+        }
+    }
 }
 
 /// Lightweight struct of git-extracted data before index enrichment.

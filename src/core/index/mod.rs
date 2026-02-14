@@ -1,10 +1,14 @@
+mod types;
+
+pub use types::{FreshnessSummary, IndexSummary};
+use types::RepoRow;
+
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
-use serde::Serialize;
 
 use super::filter::RepoFilter;
-use super::repo::{Freshness, Ownership, Remote, Repo, RepoId, RepoState};
+use super::repo::{Ownership, Remote, Repo, RepoId};
 use crate::error::Result;
 
 const SCHEMA_VERSION: i32 = 2;
@@ -337,6 +341,17 @@ impl Index {
             where_clauses.push(format!("name LIKE ?{}", params.len() + 1));
             params.push(Box::new(format!("%{}%", name)));
         }
+        if let Some(ref mb) = filter.managed_by {
+            where_clauses.push(format!("managed_by = ?{}", params.len() + 1));
+            params.push(Box::new(mb.clone()));
+        }
+        if let Some(show) = filter.show_managed {
+            if show {
+                where_clauses.push("managed_by IS NOT NULL".to_string());
+            } else {
+                where_clauses.push("managed_by IS NULL".to_string());
+            }
+        }
 
         let sql = format!(
             "SELECT id FROM repos WHERE {}",
@@ -559,113 +574,6 @@ impl Index {
             .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(tags)
     }
-}
-
-/// Internal row struct for mapping SQL columns.
-struct RepoRow {
-    id: i64,
-    name: String,
-    path: String,
-    state: String,
-    default_branch: Option<String>,
-    current_branch: Option<String>,
-    branch_count: u32,
-    stale_branch_count: u32,
-    dirty: bool,
-    staged: bool,
-    untracked: bool,
-    ahead: u32,
-    behind: u32,
-    last_commit: Option<String>,
-    last_verified: Option<String>,
-    first_seen: String,
-    freshness: String,
-    category: Option<String>,
-    ownership_type: Option<String>,
-    ownership_label: Option<String>,
-    intention: Option<String>,
-    project: Option<String>,
-    role: Option<String>,
-    managed_by: Option<String>,
-}
-
-impl RepoRow {
-    fn into_repo(self, remotes: Vec<Remote>, tags: Vec<String>) -> Repo {
-        let state = serde_plain::from_str(&self.state).unwrap_or(RepoState::Active);
-        let freshness = serde_plain::from_str(&self.freshness).unwrap_or(Freshness::Ancient);
-        let category = self
-            .category
-            .as_deref()
-            .and_then(|s| serde_plain::from_str(s).ok());
-        let intention = self
-            .intention
-            .as_deref()
-            .and_then(|s| serde_plain::from_str(s).ok());
-        let ownership = self.ownership_type.as_deref().and_then(|t| match t {
-            "personal" => Some(Ownership::Personal),
-            "work" => Some(Ownership::Work {
-                label: self.ownership_label.clone().unwrap_or_default(),
-            }),
-            "community" => Some(Ownership::Community),
-            "thirdparty" => Some(Ownership::ThirdParty),
-            "local" => Some(Ownership::Local),
-            _ => None,
-        });
-
-        fn parse_dt(s: &str) -> Option<DateTime<Utc>> {
-            DateTime::parse_from_rfc3339(s).ok().map(|dt| dt.to_utc())
-        }
-
-        Repo {
-            id: self.id,
-            name: self.name,
-            path: PathBuf::from(self.path),
-            state,
-            remotes,
-            default_branch: self.default_branch,
-            current_branch: self.current_branch,
-            branch_count: self.branch_count,
-            stale_branch_count: self.stale_branch_count,
-            dirty: self.dirty,
-            staged: self.staged,
-            untracked: self.untracked,
-            ahead: self.ahead,
-            behind: self.behind,
-            last_commit: self.last_commit.as_deref().and_then(parse_dt),
-            last_verified: self.last_verified.as_deref().and_then(parse_dt),
-            first_seen: parse_dt(&self.first_seen).unwrap_or_else(Utc::now),
-            freshness,
-            category,
-            ownership,
-            intention,
-            managed_by: self.managed_by,
-            tags,
-            project: self.project,
-            role: self.role,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct FreshnessSummary {
-    pub active: usize,
-    pub recent: usize,
-    pub stale: usize,
-    pub dormant: usize,
-    pub ancient: usize,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct IndexSummary {
-    pub total_repos: usize,
-    pub dirty_count: usize,
-    pub unpushed_count: usize,
-    pub orphan_count: usize,
-    pub lost_count: usize,
-    pub managed_count: usize,
-    pub freshness: FreshnessSummary,
-    pub last_scan: Option<DateTime<Utc>>,
-    pub roots: Vec<PathBuf>,
 }
 
 #[cfg(test)]

@@ -5,9 +5,10 @@ use owo_colors::OwoColorize;
 
 use crate::cli::OutputFormat;
 use kissa::config;
+use kissa::core::classify;
 use kissa::core::git_ops;
 use kissa::core::index::Index;
-use kissa::core::repo::{Freshness, Repo, RepoState};
+use kissa::core::repo::Repo;
 use kissa::core::scanner::{self, ScanEvent};
 
 #[derive(clap::Args)]
@@ -63,32 +64,8 @@ pub fn run(args: ScanArgs, format: OutputFormat) -> anyhow::Result<()> {
     for discovered in &result.discovered {
         match git_ops::extract_vitals(&discovered.path) {
             Ok(vitals) => {
-                let repo = Repo {
-                    id: 0,
-                    name: vitals.name,
-                    path: discovered.path.clone(),
-                    state: RepoState::Active,
-                    remotes: vitals.remotes,
-                    default_branch: vitals.default_branch,
-                    current_branch: vitals.current_branch,
-                    branch_count: vitals.branch_count,
-                    stale_branch_count: vitals.stale_branch_count,
-                    dirty: vitals.dirty,
-                    staged: vitals.staged,
-                    untracked: vitals.untracked,
-                    ahead: vitals.ahead,
-                    behind: vitals.behind,
-                    last_commit: vitals.last_commit,
-                    last_verified: Some(chrono::Utc::now()),
-                    first_seen: chrono::Utc::now(),
-                    freshness: Freshness::from_commit_time(vitals.last_commit),
-                    category: None,
-                    ownership: None,
-                    intention: None,
-                    tags: vec![],
-                    project: None,
-                    role: None,
-                };
+                let mut repo = Repo::from_vitals(vitals, discovered.path.clone());
+                classify::classify_repo(&mut repo, &cfg);
                 if index.upsert_repo(&repo).is_ok() {
                     upserted += 1;
                 }
