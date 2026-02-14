@@ -194,7 +194,6 @@ pub struct ClassifyMatch {
     pub org: Option<String>,
     pub name: Option<String>,
     pub has_remote: Option<bool>,
-    pub is_bare: Option<bool>,
 }
 
 /// Fields to set when a classification rule matches.

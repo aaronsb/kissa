@@ -1,6 +1,6 @@
 use crate::config::types::{ClassifyRule, KissaConfig};
 use super::git_ops::parse_remote_org;
-use super::repo::{Ownership, Intention, Repo};
+use super::repo::{Ownership, Intention, Repo, RepoState};
 
 /// Built-in heuristic patterns for tool-managed repos.
 /// Each entry: (glob pattern, managed_by name).
@@ -78,8 +78,6 @@ fn rule_matches(rule: &ClassifyRule, repo: &Repo) -> bool {
         }
     }
 
-    // is_bare: we don't track bare status in Repo post-scan, skip for now
-
     true
 }
 
@@ -108,6 +106,12 @@ fn apply_rule(rule: &ClassifyRule, repo: &mut Repo) {
     if let Some(ref category_str) = rule.set.category {
         if repo.category.is_none() {
             repo.category = serde_plain::from_str(category_str).ok();
+        }
+    }
+
+    if let Some(ref state_str) = rule.set.state {
+        if let Ok(state) = serde_plain::from_str::<RepoState>(state_str) {
+            repo.state = state;
         }
     }
 

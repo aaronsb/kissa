@@ -106,7 +106,8 @@ fn run_reapply(
         let old_ownership = repo.ownership.clone();
         let old_intention = repo.intention.clone();
         let old_category = repo.category;
-        let old_tags_len = repo.tags.len();
+        let mut old_tags = repo.tags.clone();
+        old_tags.sort();
 
         // Reset classification fields before re-applying
         repo.managed_by = None;
@@ -116,11 +117,13 @@ fn run_reapply(
         // Keep user tags but allow rule tags to be re-added
         classify::classify_repo(&mut repo, cfg);
 
+        let mut new_tags = repo.tags.clone();
+        new_tags.sort();
         if repo.managed_by != old_managed
             || repo.ownership != old_ownership
             || repo.intention != old_intention
             || repo.category != old_category
-            || repo.tags.len() != old_tags_len
+            || new_tags != old_tags
         {
             index.upsert_repo(&repo)?;
             changed += 1;
